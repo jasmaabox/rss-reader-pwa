@@ -1,13 +1,14 @@
-import logo from './logo.svg';
-import './App.css';
+%%raw(`import './App.css';`)
+@module("./logo.svg") external logo:string = "default"
 
-function App() {
-  return (
+module App = {
+  @react.component
+  let make = () => {
     <div className="App">
       <header className="App-header">
         <img src={logo} className="App-logo" alt="logo" />
         <p>
-          Edit <code>src/App.js</code> and save to reload.
+          {"Edit "->React.string}<code>{"src/App.js"->React.string}</code>{" and save to reload."->React.string}
         </p>
         <a
           className="App-link"
@@ -15,11 +16,9 @@ function App() {
           target="_blank"
           rel="noopener noreferrer"
         >
-          Learn React
+          {"Learn React"->React.string}
         </a>
       </header>
     </div>
-  );
+  }
 }
-
-export default App;
