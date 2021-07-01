@@ -8,17 +8,17 @@ type content =
   | CData(string)
 
 type rssPost = {
-  title: content,
-  description: content,
-  pubDate: content,
-  link: content,
-  guid: content,
+  title: string,
+  description: string,
+  pubDate: string,
+  link: string,
+  guid: string,
 }
 
 type rssFeed = {
-  title: content,
-  link: content,
-  description: content,
+  title: string,
+  link: string,
+  description: string,
   posts: array<rssPost>,
 }
 
@@ -41,8 +41,8 @@ let parseContent = (targetTag: string, nodes: array<xmlTree>) => {
     | #node((_, data)) =>
       if Array.length(data) > 0 {
         switch data[0] {
-        | #leaf(("#text", data)) => Text(data)
-        | #leaf(("#cdata-section", data)) => CData(data)
+        | #leaf(("#text", data))
+        | #leaf(("#cdata-section", data)) => data
         | _ => raise(BadFormat("content incorrectly structured"))
         }
       } else {

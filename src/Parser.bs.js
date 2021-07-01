@@ -25,15 +25,8 @@ function parseContent(targetTag, nodes) {
               var match$1 = match.VAL;
               switch (match$1[0]) {
                 case "#cdata-section" :
-                    return {
-                            TAG: /* CData */1,
-                            _0: match$1[1]
-                          };
                 case "#text" :
-                    return {
-                            TAG: /* Text */0,
-                            _0: match$1[1]
-                          };
+                    return match$1[1];
                 default:
                   throw {
                         RE_EXN_ID: BadFormat,
