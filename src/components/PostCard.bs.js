@@ -7,7 +7,8 @@ function PostCard$PostCard(Props) {
   return React.createElement("div", {
               className: "card"
             }, React.createElement("small", undefined, post.pubDate), React.createElement("a", {
-                  href: post.link
+                  href: post.link,
+                  target: "_blank"
                 }, React.createElement("h2", undefined, post.title)));
 }
 

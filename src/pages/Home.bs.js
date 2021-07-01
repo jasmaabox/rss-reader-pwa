@@ -5,58 +5,47 @@ import * as Curry from "rescript/lib/es6/curry.js";
 import * as React from "react";
 import * as Parser from "../Parser.bs.js";
 import * as PostCard from "../components/PostCard.bs.js";
-import * as Caml_js_exceptions from "rescript/lib/es6/caml_js_exceptions.js";
 
 function Home$Home(Props) {
   var match = React.useState(function () {
-        return "";
-      });
-  var setText = match[1];
-  var text = match[0];
-  var match$1 = React.useState(function () {
         return [];
       });
-  var setPosts = match$1[1];
-  var onChange = function (evt) {
-    var value = evt.target.value;
-    return Curry._1(setText, (function (_prev) {
-                  return value;
-                }));
-  };
+  var setPosts = match[1];
   var onSubmit = function (evt) {
     evt.preventDefault();
-    var feed;
-    try {
-      feed = Parser.parseFeed(text);
-    }
-    catch (raw_msg){
-      var msg = Caml_js_exceptions.internalToOCamlException(raw_msg);
-      if (msg.RE_EXN_ID === Parser.BadFormat) {
-        console.log(msg._1);
-        return ;
-      }
-      throw msg;
-    }
-    console.log(feed);
-    return Curry._1(setPosts, (function (_prev) {
-                  return feed.posts;
+    var rssUrl = evt.target["rss-url"].value;
+    var __x = fetch(rssUrl);
+    var __x$1 = __x.then(function (res) {
+          return res.text();
+        });
+    var __x$2 = __x$1.then(function (res) {
+          var rss = Parser.parseFeed(res);
+          Curry._1(setPosts, (function (_prev) {
+                  return rss.posts;
                 }));
+          return Promise.resolve(undefined);
+        });
+    __x$2.catch(function (err) {
+          console.log(err);
+          return Promise.resolve(undefined);
+        });
+    
   };
   return React.createElement("div", undefined, React.createElement("h1", undefined, "RSS Reader"), React.createElement("form", {
                   onSubmit: onSubmit
-                }, React.createElement("textarea", {
-                      cols: 100,
-                      rows: 20,
-                      onChange: onChange
-                    }), React.createElement("br", undefined), React.createElement("input", {
+                }, React.createElement("input", {
+                      name: "rss-url",
+                      placeholder: "RSS Feed URL",
+                      type: "text"
+                    }), React.createElement("input", {
                       type: "submit",
-                      value: "Render"
+                      value: "Add feed"
                     })), $$Array.map((function (post) {
                     return React.createElement(PostCard.PostCard.make, {
                                 post: post,
                                 key: post.guid
                               });
-                  }), match$1[0]));
+                  }), match[0]));
 }
 
 var Home = {
