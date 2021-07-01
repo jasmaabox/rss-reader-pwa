@@ -13,18 +13,13 @@
     "web-vitals": "^1.0.1"
   },
   "scripts": {
-    "prestart": "rescript",
+    "start": "concurrently -k \"rescript build -w\" \"react-scripts start\"",
     "prebuild": "rescript",
-    "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
   "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
   },
   "browserslist": {
     "production": [
@@ -39,6 +34,7 @@
     ]
   },
   "devDependencies": {
+    "concurrently": "^6.2.0",
     "rescript": "^9.1.4"
   }
 }

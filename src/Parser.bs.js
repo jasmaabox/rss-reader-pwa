@@ -90,7 +90,6 @@ function parsePosts(nodes) {
         return node.VAL[0] === "item";
       });
   return itemNodes.map(function (node) {
-              console.log(node);
               if (typeof node === "object") {
                 if (node.NAME === "node") {
                   var match = node.VAL;

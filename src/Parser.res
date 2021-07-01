@@ -62,7 +62,6 @@ let parsePosts = (nodes: array<xmlTree>) => {
     }
   }, nodes)
   Js.Array2.map(itemNodes, node => {
-    Js.log(node)
     switch node {
     | #node(("item", data)) => {
         title: parseContent("title", data),
