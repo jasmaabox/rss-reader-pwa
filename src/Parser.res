@@ -1,144 +1,149 @@
-module NodeList = {
-  type t<'u> = {
-    "length": int
+exception BadFormat(string)
+
+module Xml = {
+  
+  module NodeList = {
+    type t<'u> = {
+      "length": int
+    }
+    @val @scope("Array") external toArray: t<'u> => array<'u> = "from"
   }
-  @val @scope("Array") external toArray: t<'u> => array<'u> = "from"
+
+  type rec rawDocument = {
+    "nodeName": string,
+    "data": option<string>,
+    "childNodes": NodeList.t<rawDocument>,
+  }
+
+  module DomParser = {
+    type t
+    @new external make: unit => t = "DOMParser"
+    @send external parseFromString: (t, string, string) => rawDocument = "parseFromString"
+  }
+
+  type rec t =
+    | Leaf(string, option<string>)
+    | Node(string, array<t>)
+  
+  let parse = (text) => {
+    let parser = DomParser.make()
+    let rawParse = parser->DomParser.parseFromString(text, "text/xml")
+    let rec convertToObject = (curr) => {
+      if curr["childNodes"]["length"] === 0 {
+        Leaf(curr["nodeName"], curr["data"])
+      } else {
+        Node(
+          curr["nodeName"],
+          curr["childNodes"]->NodeList.toArray
+          ->Js.Array2.filter(v => v["nodeName"] !== "#comment")
+          ->Js.Array2.filter(v => !(v["nodeName"] === "#text" && switch v["data"] {
+            | Some(text) => Js.String.trim(text) === ""
+            | None => false
+            })
+          )
+          ->Js.Array2.map(convertToObject),
+        )
+      }
+    }
+    rawParse->convertToObject
+  }
 }
 
-type rec xmlDocument = {
-  "nodeName": string,
-  "data": option<string>,
-  "childNodes": NodeList.t<xmlDocument>,
-}
+module Rss = {
 
-module DomParser = {
-  type t
-  @new external make: unit => t = "DOMParser"
-  @send external parseFromString: (t, string, string) => xmlDocument = "parseFromString"
-}
-
-type rec xmlTree = [
-  | #leaf((string, option<string>))
-  | #node((string, array<xmlTree>))
-]
-
-type content =
+  type content =
   | Text(string)
   | CData(string)
 
-type rssPost = {
-  title: string,
-  description: string,
-  pubDate: string,
-  link: string,
-  guid: string,
-}
-
-type rssFeed = {
-  title: string,
-  link: string,
-  description: string,
-  posts: array<rssPost>,
-}
-
-exception BadFormat(string)
-
-let parseRawXML = (text) => {
-  let parser = DomParser.make()
-  let rawParse = parser->DomParser.parseFromString(text, "text/xml")
-  let rec convertToObject = (curr) => {
-    if curr["childNodes"]["length"] === 0 {
-      #leaf((curr["nodeName"], curr["data"]))
-    } else {
-      #node((
-        curr["nodeName"],
-        curr["childNodes"]
-        ->NodeList.toArray
-        ->Js.Array2.filter(v => v["nodeName"] !== "#comment")
-        ->Js.Array2.filter(v => !(v["nodeName"] === "#text" && switch v["data"] {
-        | Some(text) => Js.String.trim(text) === ""
-        | None => false
-        }))
-        ->Js.Array2.map(convertToObject)
-      ))
-    }
-  }
-  rawParse->convertToObject
-}
-
-let parseContent = (targetTag: string, nodes: array<xmlTree>) => {
-  // Find node from list
-  let res = Js.Array.find(node => {
-    switch node {
-    | #leaf((tag, _)) => tag == targetTag
-    | #node((tag, _)) => tag == targetTag
-    }
-  }, nodes)
-  switch res {
-  | Some(childNode) =>
-    // Get content
-    switch childNode {
-    | #node((_, data)) =>
-      if Array.length(data) > 0 {
-        switch data[0] {
-        | #leaf(("#text", Some(data)))
-        | #leaf(("#cdata-section", Some(data))) => data
-        | _ => raise(BadFormat("content incorrectly structured"))
-        }
-      } else {
-        raise(BadFormat("missing content child"))
+  let parseContent = (targetTag: string, nodes: array<Xml.t>) => {
+    // Find node from list
+    let res = Js.Array.find(node => {
+      switch node {
+      | Xml.Leaf(tag, _) => tag == targetTag
+      | Xml.Node(tag, _) => tag == targetTag
       }
-    | _ => raise(BadFormat("node has incorrect type"))
-    }
-  | None => raise(BadFormat("tag not found"))
-  }
-}
-
-let parsePosts = (nodes: array<xmlTree>) => {
-  let itemNodes = Js.Array.filter(node => {
-    switch node {
-    | #leaf((tag, _)) => tag == "item"
-    | #node((tag, _)) => tag == "item"
-    }
-  }, nodes)
-  Js.Array2.map(itemNodes, node => {
-    switch node {
-    | #node(("item", data)) => {
-        title: parseContent("title", data),
-        description: parseContent("description", data),
-        pubDate: parseContent("pubDate", data),
-        link: parseContent("link", data),
-        guid: parseContent("guid", data),
-      }
-    | _ => raise(BadFormat("item has incorrect node type"))
-    }
-  })
-}
-
-let parseFeed = (text: string) => {
-  switch text->parseRawXML {
-  | #node(("#document", data)) =>
-    if Array.length(data) > 0 {
-      switch data[0] {
-      | #node(("rss", data)) =>
+    }, nodes)
+    switch res {
+    | Some(childNode) =>
+      // Get content
+      switch childNode {
+      | Xml.Node(_, data) =>
         if Array.length(data) > 0 {
           switch data[0] {
-          | #node(("channel", data)) => {
-              title: parseContent("title", data),
-              link: parseContent("link", data),
-              description: parseContent("description", data),
-              posts: parsePosts(data),
-            }
-          | _ => raise(BadFormat("missing channel tag"))
+          | Xml.Leaf("#text", Some(data))
+          | Xml.Leaf("#cdata-section", Some(data)) => data
+          | _ => raise(BadFormat("content incorrectly structured"))
           }
         } else {
-          raise(BadFormat("missing children in rss"))
+          raise(BadFormat("missing content child"))
         }
-      | _ => raise(BadFormat("missing rss tag"))
+      | _ => raise(BadFormat("node has incorrect type"))
       }
-    } else {
-      raise(BadFormat("missing children in #document"))
+    | None => raise(BadFormat("tag not found"))
     }
-  | _ => raise(BadFormat("missing #document tag"))
+  }
+
+  type post = {
+    title: string,
+    description: string,
+    pubDate: string,
+    link: string,
+    guid: string,
+  }
+
+  let parsePosts = (nodes: array<Xml.t>) => {
+    let itemNodes = Js.Array.filter(node => {
+      switch node {
+      | Xml.Leaf(tag, _) => tag == "item"
+      | Xml.Node(tag, _) => tag == "item"
+      }
+    }, nodes)
+    Js.Array2.map(itemNodes, node => {
+      switch node {
+      | Xml.Node("item", data) => {
+          title: parseContent("title", data),
+          description: parseContent("description", data),
+          pubDate: parseContent("pubDate", data),
+          link: parseContent("link", data),
+          guid: parseContent("guid", data),
+        }
+      | _ => raise(BadFormat("item has incorrect node type"))
+      }
+    })
+  }
+
+  type feed = {
+    title: string,
+    link: string,
+    description: string,
+    posts: array<post>,
+  }
+
+  let parseFeed = (text: string) => {
+    switch text->Xml.parse {
+    | Xml.Node("#document", data) =>
+      if Array.length(data) > 0 {
+        switch data[0] {
+        | Xml.Node("rss", data) =>
+          if Array.length(data) > 0 {
+            switch data[0] {
+            | Xml.Node("channel", data) => {
+                title: parseContent("title", data),
+                link: parseContent("link", data),
+                description: parseContent("description", data),
+                posts: parsePosts(data),
+              }
+            | _ => raise(BadFormat("missing channel tag"))
+            }
+          } else {
+            raise(BadFormat("missing children in rss"))
+          }
+        | _ => raise(BadFormat("missing rss tag"))
+        }
+      } else {
+        raise(BadFormat("missing children in #document"))
+      }
+    | _ => raise(BadFormat("missing #document tag"))
+    }
   }
 }

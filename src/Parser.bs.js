@@ -3,107 +3,94 @@
 import * as Caml_array from "rescript/lib/es6/caml_array.js";
 import * as Caml_exceptions from "rescript/lib/es6/caml_exceptions.js";
 
+var BadFormat = /* @__PURE__ */Caml_exceptions.create("Parser.BadFormat");
+
 var $$NodeList = {};
 
 var DomParser = {};
 
-var BadFormat = /* @__PURE__ */Caml_exceptions.create("Parser.BadFormat");
-
-function parseRawXML(text) {
+function parse(text) {
   var parser = new DOMParser();
   var rawParse = parser.parseFromString(text, "text/xml");
   var convertToObject = function (curr) {
     if (curr.childNodes.length === 0) {
       return {
-              NAME: "leaf",
-              VAL: [
-                curr.nodeName,
-                curr.data
-              ]
+              TAG: /* Leaf */0,
+              _0: curr.nodeName,
+              _1: curr.data
             };
     } else {
       return {
-              NAME: "node",
-              VAL: [
-                curr.nodeName,
-                Array.from(curr.childNodes).filter(function (v) {
-                          return v.nodeName !== "#comment";
-                        }).filter(function (v) {
-                        var tmp = false;
-                        if (v.nodeName === "#text") {
-                          var text = v.data;
-                          tmp = text !== undefined ? text.trim() === "" : false;
-                        }
-                        return !tmp;
-                      }).map(convertToObject)
-              ]
+              TAG: /* Node */1,
+              _0: curr.nodeName,
+              _1: Array.from(curr.childNodes).filter(function (v) {
+                        return v.nodeName !== "#comment";
+                      }).filter(function (v) {
+                      var tmp = false;
+                      if (v.nodeName === "#text") {
+                        var text = v.data;
+                        tmp = text !== undefined ? text.trim() === "" : false;
+                      }
+                      return !tmp;
+                    }).map(convertToObject)
             };
     }
   };
   return convertToObject(rawParse);
 }
 
+var Xml = {
+  $$NodeList: $$NodeList,
+  DomParser: DomParser,
+  parse: parse
+};
+
 function parseContent(targetTag, nodes) {
   var res = nodes.find(function (node) {
-        return node.VAL[0] === targetTag;
+        return node._0 === targetTag;
       });
   if (res !== undefined) {
-    if (typeof res === "object") {
-      if (res.NAME === "node") {
-        var data = res.VAL[1];
-        if (data.length !== 0) {
-          var match = Caml_array.get(data, 0);
-          if (typeof match === "object") {
-            if (match.NAME === "leaf") {
-              var match$1 = match.VAL;
-              switch (match$1[0]) {
-                case "#cdata-section" :
-                case "#text" :
-                    break;
-                default:
-                  throw {
-                        RE_EXN_ID: BadFormat,
-                        _1: "content incorrectly structured",
-                        Error: new Error()
-                      };
-              }
-              var data$1 = match$1[1];
-              if (data$1 !== undefined) {
-                return data$1;
-              }
-              throw {
-                    RE_EXN_ID: BadFormat,
-                    _1: "content incorrectly structured",
-                    Error: new Error()
-                  };
-            }
-            throw {
-                  RE_EXN_ID: BadFormat,
-                  _1: "content incorrectly structured",
-                  Error: new Error()
-                };
-          }
-          throw {
-                RE_EXN_ID: BadFormat,
-                _1: "content incorrectly structured",
-                Error: new Error()
-              };
-        }
-        throw {
-              RE_EXN_ID: BadFormat,
-              _1: "missing content child",
-              Error: new Error()
-            };
-      }
+    if (res.TAG === /* Leaf */0) {
       throw {
             RE_EXN_ID: BadFormat,
             _1: "node has incorrect type",
             Error: new Error()
           };
     }
+    var data = res._1;
+    if (data.length !== 0) {
+      var match = Caml_array.get(data, 0);
+      if (match.TAG === /* Leaf */0) {
+        switch (match._0) {
+          case "#cdata-section" :
+          case "#text" :
+              break;
+          default:
+            throw {
+                  RE_EXN_ID: BadFormat,
+                  _1: "content incorrectly structured",
+                  Error: new Error()
+                };
+        }
+        var data$1 = match._1;
+        if (data$1 !== undefined) {
+          return data$1;
+        }
+        throw {
+              RE_EXN_ID: BadFormat,
+              _1: "content incorrectly structured",
+              Error: new Error()
+            };
+      }
+      throw {
+            RE_EXN_ID: BadFormat,
+            _1: "content incorrectly structured",
+            Error: new Error()
+          };
+    }
     throw {
           RE_EXN_ID: BadFormat,
-          _1: "node has incorrect type",
+          _1: "missing content child",
           Error: new Error()
         };
   }
@@ -116,33 +103,25 @@ function parseContent(targetTag, nodes) {
 
 function parsePosts(nodes) {
   var itemNodes = nodes.filter(function (node) {
-        return node.VAL[0] === "item";
+        return node._0 === "item";
       });
   return itemNodes.map(function (node) {
-              if (typeof node === "object") {
-                if (node.NAME === "node") {
-                  var match = node.VAL;
-                  if (match[0] === "item") {
-                    var data = match[1];
-                    return {
-                            title: parseContent("title", data),
-                            description: parseContent("description", data),
-                            pubDate: parseContent("pubDate", data),
-                            link: parseContent("link", data),
-                            guid: parseContent("guid", data)
-                          };
-                  }
-                  throw {
-                        RE_EXN_ID: BadFormat,
-                        _1: "item has incorrect node type",
-                        Error: new Error()
-                      };
-                }
+              if (node.TAG === /* Leaf */0) {
                 throw {
                       RE_EXN_ID: BadFormat,
                       _1: "item has incorrect node type",
                       Error: new Error()
                     };
+              }
+              if (node._0 === "item") {
+                var data = node._1;
+                return {
+                        title: parseContent("title", data),
+                        description: parseContent("description", data),
+                        pubDate: parseContent("pubDate", data),
+                        link: parseContent("link", data),
+                        guid: parseContent("guid", data)
+                      };
               }
               throw {
                     RE_EXN_ID: BadFormat,
@@ -153,90 +132,66 @@ function parsePosts(nodes) {
 }
 
 function parseFeed(text) {
-  var match = parseRawXML(text);
-  if (typeof match === "object") {
-    if (match.NAME === "node") {
-      var match$1 = match.VAL;
-      if (match$1[0] === "#document") {
-        var data = match$1[1];
-        if (data.length !== 0) {
-          var match$2 = Caml_array.get(data, 0);
-          if (typeof match$2 === "object") {
-            if (match$2.NAME === "node") {
-              var match$3 = match$2.VAL;
-              if (match$3[0] === "rss") {
-                var data$1 = match$3[1];
-                if (data$1.length !== 0) {
-                  var match$4 = Caml_array.get(data$1, 0);
-                  if (typeof match$4 === "object") {
-                    if (match$4.NAME === "node") {
-                      var match$5 = match$4.VAL;
-                      if (match$5[0] === "channel") {
-                        var data$2 = match$5[1];
-                        return {
-                                title: parseContent("title", data$2),
-                                link: parseContent("link", data$2),
-                                description: parseContent("description", data$2),
-                                posts: parsePosts(data$2)
-                              };
-                      }
-                      throw {
-                            RE_EXN_ID: BadFormat,
-                            _1: "missing channel tag",
-                            Error: new Error()
-                          };
-                    }
-                    throw {
-                          RE_EXN_ID: BadFormat,
-                          _1: "missing channel tag",
-                          Error: new Error()
-                        };
-                  }
-                  throw {
-                        RE_EXN_ID: BadFormat,
-                        _1: "missing channel tag",
-                        Error: new Error()
-                      };
-                }
-                throw {
-                      RE_EXN_ID: BadFormat,
-                      _1: "missing children in rss",
-                      Error: new Error()
-                    };
-              }
-              throw {
-                    RE_EXN_ID: BadFormat,
-                    _1: "missing rss tag",
-                    Error: new Error()
-                  };
-            }
+  var match = parse(text);
+  if (match.TAG === /* Leaf */0) {
+    throw {
+          RE_EXN_ID: BadFormat,
+          _1: "missing #document tag",
+          Error: new Error()
+        };
+  }
+  if (match._0 === "#document") {
+    var data = match._1;
+    if (data.length !== 0) {
+      var match$1 = Caml_array.get(data, 0);
+      if (match$1.TAG === /* Leaf */0) {
+        throw {
+              RE_EXN_ID: BadFormat,
+              _1: "missing rss tag",
+              Error: new Error()
+            };
+      }
+      if (match$1._0 === "rss") {
+        var data$1 = match$1._1;
+        if (data$1.length !== 0) {
+          var match$2 = Caml_array.get(data$1, 0);
+          if (match$2.TAG === /* Leaf */0) {
             throw {
                   RE_EXN_ID: BadFormat,
-                  _1: "missing rss tag",
+                  _1: "missing channel tag",
                   Error: new Error()
                 };
           }
+          if (match$2._0 === "channel") {
+            var data$2 = match$2._1;
+            return {
+                    title: parseContent("title", data$2),
+                    link: parseContent("link", data$2),
+                    description: parseContent("description", data$2),
+                    posts: parsePosts(data$2)
+                  };
+          }
           throw {
                 RE_EXN_ID: BadFormat,
-                _1: "missing rss tag",
+                _1: "missing channel tag",
                 Error: new Error()
               };
         }
         throw {
               RE_EXN_ID: BadFormat,
-              _1: "missing children in #document",
+              _1: "missing children in rss",
               Error: new Error()
             };
       }
       throw {
             RE_EXN_ID: BadFormat,
-            _1: "missing #document tag",
+            _1: "missing rss tag",
             Error: new Error()
           };
     }
     throw {
           RE_EXN_ID: BadFormat,
-          _1: "missing #document tag",
+          _1: "missing children in #document",
           Error: new Error()
         };
   }
@@ -247,14 +202,16 @@ function parseFeed(text) {
       };
 }
 
+var Rss = {
+  parseContent: parseContent,
+  parsePosts: parsePosts,
+  parseFeed: parseFeed
+};
+
 export {
-  $$NodeList ,
-  DomParser ,
   BadFormat ,
-  parseRawXML ,
-  parseContent ,
-  parsePosts ,
-  parseFeed ,
+  Xml ,
+  Rss ,
   
 }
 /* No side effect */

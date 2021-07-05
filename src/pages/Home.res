@@ -23,7 +23,7 @@ module Home = {
           res->Http.Response.text
         }, _)->Js.Promise.then_(res => {
           // Set posts
-          let rss = Parser.parseFeed(res)
+          let rss = Parser.Rss.parseFeed(res)
           setPosts(_prev => rss.posts)
           Js.Promise.resolve(())
         }, _)->Js.Promise.catch(err => {

@@ -22,7 +22,7 @@ function Home$Home(Props) {
             return res.text();
           });
       var __x$2 = __x$1.then(function (res) {
-            var rss = Parser.parseFeed(res);
+            var rss = Parser.Rss.parseFeed(res);
             Curry._1(setPosts, (function (_prev) {
                     return rss.posts;
                   }));
