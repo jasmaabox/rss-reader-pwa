@@ -2,10 +2,6 @@ open PostCard
 
 module Home = {
 
-  type httpResponse
-  @val external fetch: string => Js.Promise.t<httpResponse> = "fetch"
-  @send external text: httpResponse => Js.Promise.t<string> = "text"
-
   @react.component
   let make = () => {
 
@@ -14,21 +10,30 @@ module Home = {
     let onSubmit = evt => {
       ReactEvent.Form.preventDefault(evt)
 
-      let rssUrl = ReactEvent.Form.target(evt)["rss-url"]["value"]
-      // TODO: attach cors proxy to fetch
-      let _ = fetch(rssUrl)->Js.Promise.then_(res => {
-        // Get response text
-        text(res)
-      }, _)->Js.Promise.then_(res => {
-        // Set posts
-        let rss = Parser.parseFeed(res)
-        setPosts(_prev => rss.posts)
-        Js.Promise.resolve(())
-      }, _)->Js.Promise.catch(err => {
-        // TEMP: log errors for now
-        Js.log(err)
-        Js.Promise.resolve(())
-      }, _)
+      switch Env.corsProxyUrl {
+      | Some(corsProxyUrl) =>
+        let rssUrl = Url.make(corsProxyUrl)
+        rssUrl["searchParams"]->Url.SearchParams.set(
+          "targetURL",
+          ReactEvent.Form.target(evt)["rss-url"]["value"],
+        )
+
+        let _ = Http.fetch1(rssUrl->Url.toString)->Js.Promise.then_(res => {
+          // Get response text
+          res->Http.Response.text
+        }, _)->Js.Promise.then_(res => {
+          // Set posts
+          let rss = Parser.parseFeed(res)
+          setPosts(_prev => rss.posts)
+          Js.Promise.resolve(())
+        }, _)->Js.Promise.catch(err => {
+          // TEMP: log errors for now
+          Js.log(err)
+          Js.Promise.resolve(())
+        }, _)
+      | None =>
+        Js.log("No cors proxy found.")
+      }
     }
 
     <div>

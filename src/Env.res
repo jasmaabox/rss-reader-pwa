@@ -1,0 +1,1 @@
+@val @scope(("process", "env")) external corsProxyUrl: option<string> = "REACT_APP_CORS_PROXY_URL"

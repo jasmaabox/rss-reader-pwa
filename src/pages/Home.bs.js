@@ -13,22 +13,28 @@ function Home$Home(Props) {
   var setPosts = match[1];
   var onSubmit = function (evt) {
     evt.preventDefault();
-    var rssUrl = evt.target["rss-url"].value;
-    var __x = fetch(rssUrl);
-    var __x$1 = __x.then(function (res) {
-          return res.text();
-        });
-    var __x$2 = __x$1.then(function (res) {
-          var rss = Parser.parseFeed(res);
-          Curry._1(setPosts, (function (_prev) {
-                  return rss.posts;
-                }));
-          return Promise.resolve(undefined);
-        });
-    __x$2.catch(function (err) {
-          console.log(err);
-          return Promise.resolve(undefined);
-        });
+    var corsProxyUrl = process.env.REACT_APP_CORS_PROXY_URL;
+    if (corsProxyUrl !== undefined) {
+      var rssUrl = new URL(corsProxyUrl);
+      rssUrl.searchParams.set("targetURL", evt.target["rss-url"].value);
+      var __x = fetch(rssUrl.toString());
+      var __x$1 = __x.then(function (res) {
+            return res.text();
+          });
+      var __x$2 = __x$1.then(function (res) {
+            var rss = Parser.parseFeed(res);
+            Curry._1(setPosts, (function (_prev) {
+                    return rss.posts;
+                  }));
+            return Promise.resolve(undefined);
+          });
+      __x$2.catch(function (err) {
+            console.log(err);
+            return Promise.resolve(undefined);
+          });
+      return ;
+    }
+    console.log("No cors proxy found.");
     
   };
   return React.createElement("div", undefined, React.createElement("h1", undefined, "RSS Reader"), React.createElement("form", {
