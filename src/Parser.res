@@ -1,5 +1,24 @@
+module NodeList = {
+  type t<'u> = {
+    "length": int
+  }
+  @val @scope("Array") external toArray: t<'u> => array<'u> = "from"
+}
+
+type rec xmlDocument = {
+  "nodeName": string,
+  "data": option<string>,
+  "childNodes": NodeList.t<xmlDocument>,
+}
+
+module DomParser = {
+  type t
+  @new external make: unit => t = "DOMParser"
+  @send external parseFromString: (t, string, string) => xmlDocument = "parseFromString"
+}
+
 type rec xmlTree = [
-  | #leaf((string, string))
+  | #leaf((string, option<string>))
   | #node((string, array<xmlTree>))
 ]
 
@@ -24,7 +43,28 @@ type rssFeed = {
 
 exception BadFormat(string)
 
-@module("./parserHelper") external parseRawXML: string => xmlTree = "parseRawXML"
+let parseRawXML = (text) => {
+  let parser = DomParser.make()
+  let rawParse = parser->DomParser.parseFromString(text, "text/xml")
+  let rec convertToObject = (curr) => {
+    if curr["childNodes"]["length"] === 0 {
+      #leaf((curr["nodeName"], curr["data"]))
+    } else {
+      #node((
+        curr["nodeName"],
+        curr["childNodes"]
+        ->NodeList.toArray
+        ->Js.Array2.filter(v => v["nodeName"] !== "#comment")
+        ->Js.Array2.filter(v => !(v["nodeName"] === "#text" && switch v["data"] {
+        | Some(text) => Js.String.trim(text) === ""
+        | None => false
+        }))
+        ->Js.Array2.map(convertToObject)
+      ))
+    }
+  }
+  rawParse->convertToObject
+}
 
 let parseContent = (targetTag: string, nodes: array<xmlTree>) => {
   // Find node from list
@@ -41,8 +81,8 @@ let parseContent = (targetTag: string, nodes: array<xmlTree>) => {
     | #node((_, data)) =>
       if Array.length(data) > 0 {
         switch data[0] {
-        | #leaf(("#text", data))
-        | #leaf(("#cdata-section", data)) => data
+        | #leaf(("#text", Some(data)))
+        | #leaf(("#cdata-section", Some(data))) => data
         | _ => raise(BadFormat("content incorrectly structured"))
         }
       } else {
