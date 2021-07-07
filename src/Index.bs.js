@@ -4,12 +4,18 @@ import * as App from "./App.bs.js";
 import * as React from "react";
 import * as ReactDom from "react-dom";
 import ReportWebVitals from "./reportWebVitals";
+import * as ServiceWorkerRegistration from "./serviceWorkerRegistration";
 
 import './index.css';
 ;
 
 function reportWebVitals(prim) {
   ReportWebVitals();
+  
+}
+
+function registerServiceWorker(prim) {
+  ServiceWorkerRegistration.register();
   
 }
 
@@ -21,10 +27,13 @@ if (!(root == null)) {
           }), root);
 }
 
+ServiceWorkerRegistration.register();
+
 ReportWebVitals();
 
 export {
   reportWebVitals ,
+  registerServiceWorker ,
   
 }
 /*  Not a pure module */
