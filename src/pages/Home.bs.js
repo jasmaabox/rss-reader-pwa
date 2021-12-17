@@ -14,10 +14,32 @@ function Home$Home(Props) {
       });
   var setPosts = match[1];
   var match$1 = React.useState(function () {
-        return $$Storage.getFeedUrls(undefined);
+        return $$Storage.getContentProviders(undefined);
       });
-  var setFeedUrls = match$1[1];
-  var feedUrls = match$1[0];
+  var setContentProviders = match$1[1];
+  var contentProviders = match$1[0];
+  var match$2 = React.useState(function () {
+        return "";
+      });
+  var setName = match$2[1];
+  var name = match$2[0];
+  var match$3 = React.useState(function () {
+        return "";
+      });
+  var setFeedUrl = match$3[1];
+  var feedUrl = match$3[0];
+  var onChangeName = function (evt) {
+    var value = evt.currentTarget.value;
+    return Curry._1(setName, (function (param) {
+                  return value;
+                }));
+  };
+  var onChangeFeedUrl = function (evt) {
+    var value = evt.currentTarget.value;
+    return Curry._1(setFeedUrl, (function (param) {
+                  return value;
+                }));
+  };
   var fetchPosts = function (url) {
     var corsProxyUrl = process.env.REACT_APP_CORS_PROXY_URL;
     if (corsProxyUrl !== undefined) {
@@ -40,7 +62,9 @@ function Home$Home(Props) {
     return Promise.resolve([]);
   };
   React.useEffect((function () {
-          var urls = Belt_Set.toArray(feedUrls).map(fetchPosts);
+          var urls = Belt_Set.toArray(contentProviders).map(function (contentProvider) {
+                  return contentProvider.feedUrl;
+                }).map(fetchPosts);
           var __x = Promise.all(urls);
           __x.then(function (res) {
                 var allPosts = res.reduce((function (acc, posts) {
@@ -52,22 +76,39 @@ function Home$Home(Props) {
                 return Promise.resolve(undefined);
               });
           
-        }), [feedUrls]);
-  var onSubmit = function (evt) {
+        }), [contentProviders]);
+  var onAddContentProvider = function (evt) {
     evt.preventDefault();
-    var url = evt.target["rss-url"].value;
-    var updatedFeedUrls = Belt_Set.add(feedUrls, url);
-    Curry._1(setFeedUrls, (function (param) {
-            return updatedFeedUrls;
+    var provider = {
+      name: name,
+      feedUrl: feedUrl
+    };
+    Curry._1(setName, (function (param) {
+            return "";
           }));
-    return $$Storage.setFeedUrls(updatedFeedUrls);
+    Curry._1(setFeedUrl, (function (param) {
+            return "";
+          }));
+    var updatedContentProviders = Belt_Set.add(contentProviders, provider);
+    Curry._1(setContentProviders, (function (param) {
+            return updatedContentProviders;
+          }));
+    return $$Storage.setContentProviders(updatedContentProviders);
   };
   return React.createElement("div", undefined, React.createElement("h1", undefined, "RSS Reader"), React.createElement("form", {
-                  onSubmit: onSubmit
+                  onSubmit: onAddContentProvider
                 }, React.createElement("input", {
-                      name: "rss-url",
+                      name: "name",
+                      placeholder: "RSS Feed Name",
+                      type: "text",
+                      value: name,
+                      onChange: onChangeName
+                    }), React.createElement("input", {
+                      name: "feed-url",
                       placeholder: "RSS Feed URL",
-                      type: "text"
+                      type: "text",
+                      value: feedUrl,
+                      onChange: onChangeFeedUrl
                     }), React.createElement("input", {
                       type: "submit",
                       value: "Add feed"
