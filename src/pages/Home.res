@@ -19,7 +19,7 @@ module Home = {
           res->Http.Response.text
         }, _)->Js.Promise.then_(res => {
           // Set posts
-          let rss = Parser.Rss.parseFeed(res)
+          let rss = Rss.parseFeed(res)
           Js.Promise.resolve(rss.posts)
         }, _)->Js.Promise.catch(err => {
           // TEMP: log errors for now
